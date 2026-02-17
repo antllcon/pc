@@ -17,6 +17,7 @@ public:
 	Process& operator=(Process&& other) noexcept;
 
 	void Wait();
+	void MarkAsWaited();
 	[[nodiscard]] pid_t GetPid() const;
 
 private:

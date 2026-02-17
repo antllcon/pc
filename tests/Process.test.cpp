@@ -1,21 +1,32 @@
 #include "src/Process/Process.h"
+
 #include <gtest/gtest.h>
 
 using namespace testing;
 
-// Проверка запуска простой команды
-TEST(ProcessTest, EchoCommandReturnsSuccess)
+// Проверка успешного выполнения простой команды
+TEST(ProcessTest, ExecuteTrueSuccess)
 {
-	std::vector<std::string> args = { "Hello" };
-	Process process("echo", args);
-
-	EXPECT_NO_THROW(process.Wait());
+	Process process("true", {});
+	process.Wait();
+	EXPECT_GT(process.GetPid(), 0);
 }
 
-// Проверка обработки ошибки (несуществующая программа)
-TEST(ProcessTest, InvalidProgramThrowsException)
+// Проверка выброса исключения при ошибке в дочернем процессе
+TEST(ProcessTest, ExecuteFalseThrows)
 {
-	std::vector<std::string> args;
-	Process process("program_that_does_not_exist_12345", args);
+	Process process("false", {});
 	EXPECT_THROW(process.Wait(), std::runtime_error);
+}
+
+// Проверка перемещения процесса
+TEST(ProcessTest, MoveConstructorWorks)
+{
+	Process original("true", {});
+	pid_t originalPid = original.GetPid();
+
+	Process moved(std::move(original));
+
+	EXPECT_EQ(moved.GetPid(), originalPid);
+	EXPECT_NO_THROW(moved.Wait());
 }

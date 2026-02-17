@@ -5,7 +5,7 @@
 
 namespace
 {
-void AssertForkSuccess(pid_t pid)
+void AssertIsForkSuccessful(pid_t pid)
 {
 	if (pid < 0)
 	{
@@ -13,7 +13,7 @@ void AssertForkSuccess(pid_t pid)
 	}
 }
 
-void AssertWaitSuccess(pid_t result)
+void AssertIsWaitSuccessful(pid_t result)
 {
 	if (result == -1)
 	{
@@ -21,7 +21,7 @@ void AssertWaitSuccess(pid_t result)
 	}
 }
 
-void AssertExitStatus(int status)
+void AssertIsExitStatusCorrect(int status)
 {
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
 	{
@@ -29,7 +29,7 @@ void AssertExitStatus(int status)
 	}
 }
 
-std::vector<char*> CreateArgsVector(const std::string& program, const std::vector<std::string>& args)
+std::vector<char*> PrepareExecArguments(const std::string& program, const std::vector<std::string>& args)
 {
 	std::vector<char*> cArgs;
 	cArgs.reserve(args.size() + 2);
@@ -59,14 +59,14 @@ Process::Process(const std::string& program, const std::vector<std::string>& arg
 	: m_pid(-1)
 	, m_waited(false)
 {
+	auto argv = PrepareExecArguments(program, args);
+
 	m_pid = fork();
-	AssertForkSuccess(m_pid);
+	AssertIsForkSuccessful(m_pid);
 
 	if (m_pid == 0)
 	{
-		auto cArgs = CreateArgsVector(program, args);
-		execvp(program.c_str(), &cArgs[0]);
-
+		execvp(program.c_str(), argv.data());
 		_exit(127);
 	}
 }
@@ -110,9 +110,14 @@ void Process::Wait()
 	int status = 0;
 	pid_t result = waitpid(m_pid, &status, 0);
 
-	AssertWaitSuccess(result);
-	AssertExitStatus(status);
+	AssertIsWaitSuccessful(result);
+	AssertIsExitStatusCorrect(status);
 
+	m_waited = true;
+}
+
+void Process::MarkAsWaited()
+{
 	m_waited = true;
 }
 
