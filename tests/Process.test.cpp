@@ -1,5 +1,4 @@
-#include "src/Process/Process.h"
-
+#include "src/process/Process.h"
 #include <gtest/gtest.h>
 
 using namespace testing;

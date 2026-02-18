@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "src/Process/ProcessManager.h"
+#include "src/process/ProcessManager.h"
 
 using namespace testing;
 
