@@ -1,10 +1,14 @@
 #include "Process.h"
+
+#include <iostream>
 #include <stdexcept>
 #include <sys/wait.h>
 #include <unistd.h>
 
 namespace
 {
+constexpr int COMMAND_NOT_FOUND_EXIT_CODE = 127;
+
 void AssertIsForkSuccessful(pid_t pid)
 {
 	if (pid < 0)
@@ -21,12 +25,26 @@ void AssertIsWaitSuccessful(pid_t result)
 	}
 }
 
-void AssertIsExitStatusCorrect(int status)
+bool EvaluateProcessStatus(int status, pid_t pid)
 {
-	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+	if (WIFEXITED(status))
 	{
-		throw std::runtime_error("Дочерний процесс завершился с ошибкой");
+		int code = WEXITSTATUS(status);
+		if (code == 0)
+		{
+			return true;
+		}
+
+		std::cerr << "Процесс (PID: " << pid << ") завершился с кодом ошибки: " << code << std::endl;
+		return false;
 	}
+
+	if (WIFSIGNALED(status))
+	{
+		std::cerr << "Процесс (PID: " << pid << ") убит сигналом: " << WTERMSIG(status) << std::endl;
+	}
+
+	return false;
 }
 
 std::vector<char*> PrepareExecArguments(const std::string& program, const std::vector<std::string>& args)
@@ -58,6 +76,7 @@ void DisposeProcess(pid_t pid, bool waited)
 Process::Process(const std::string& program, const std::vector<std::string>& args)
 	: m_pid(-1)
 	, m_waited(false)
+	, m_success(false)
 {
 	auto argv = PrepareExecArguments(program, args);
 
@@ -67,7 +86,7 @@ Process::Process(const std::string& program, const std::vector<std::string>& arg
 	if (m_pid == 0)
 	{
 		execvp(program.c_str(), argv.data());
-		_exit(127);
+		_exit(COMMAND_NOT_FOUND_EXIT_CODE);
 	}
 }
 
@@ -79,9 +98,11 @@ Process::~Process()
 Process::Process(Process&& other) noexcept
 	: m_pid(other.m_pid)
 	, m_waited(other.m_waited)
+	, m_success(other.m_success)
 {
 	other.m_pid = -1;
 	other.m_waited = true;
+	other.m_success = false;
 }
 
 Process& Process::operator=(Process&& other) noexcept
@@ -95,30 +116,33 @@ Process& Process::operator=(Process&& other) noexcept
 
 		other.m_pid = -1;
 		other.m_waited = true;
+		other.m_success = false;
 	}
 
 	return *this;
 }
 
-void Process::Wait()
+bool Process::Wait()
 {
 	if (m_waited)
 	{
-		return;
+		return m_success;
 	}
 
 	int status = 0;
 	pid_t result = waitpid(m_pid, &status, 0);
 
 	AssertIsWaitSuccessful(result);
-	AssertIsExitStatusCorrect(status);
-
+	m_success = EvaluateProcessStatus(status, m_pid);
 	m_waited = true;
+
+	return m_success;
 }
 
-void Process::MarkAsWaited()
+void Process::MarkAsWaited(bool success)
 {
 	m_waited = true;
+	m_success = success;
 }
 
 pid_t Process::GetPid() const

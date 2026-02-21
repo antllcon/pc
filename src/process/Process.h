@@ -1,5 +1,4 @@
 #pragma once
-
 #include <string>
 #include <vector>
 #include <sys/types.h>
@@ -16,11 +15,12 @@ public:
 	Process(Process&& other) noexcept;
 	Process& operator=(Process&& other) noexcept;
 
-	void Wait();
-	void MarkAsWaited();
+	bool Wait();
+	void MarkAsWaited(bool success);
 	[[nodiscard]] pid_t GetPid() const;
 
 private:
 	pid_t m_pid;
 	bool m_waited;
+	bool m_success;
 };

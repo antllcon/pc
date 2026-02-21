@@ -1,5 +1,6 @@
 #include "ProcessManager.h"
 #include <algorithm>
+#include <iostream>
 #include <stdexcept>
 #include <sys/wait.h>
 
@@ -13,20 +14,34 @@ void AssertIsWaitAnySuccessful(pid_t pid)
 	}
 }
 
-void AssertIsChildSuccess(int status)
+bool EvaluateManagerProcessStatus(int status, pid_t pid)
 {
-	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+	if (WIFEXITED(status))
 	{
-		throw std::runtime_error("Один из процессов завершился с ошибкой");
+		int code = WEXITSTATUS(status);
+		if (code == 0)
+		{
+			return true;
+		}
+
+		std::cerr << "Процесс (PID: " << pid << ") завершился с ошибкой, код: " << code << std::endl;
+		return false;
 	}
+
+	if (WIFSIGNALED(status))
+	{
+		std::cerr << "Процесс (PID: " << pid << ") убит сигналом: " << WTERMSIG(status) << std::endl;
+	}
+
+	return false;
 }
-}
+} // namespace
 
 ProcessManager::ProcessManager() = default;
 
 ProcessManager::~ProcessManager()
 {
-	WaitAll();
+	(void)WaitAll();
 }
 
 void ProcessManager::Add(Process&& process)
@@ -34,30 +49,37 @@ void ProcessManager::Add(Process&& process)
 	m_activeProcesses.push_back(std::move(process));
 }
 
-void ProcessManager::WaitAny()
+bool ProcessManager::WaitAny()
 {
 	if (m_activeProcesses.empty())
 	{
-		return;
+		return true;
 	}
 
 	int status = 0;
-	pid_t finishedPid = waitpid(-1, &status, 0);
+	pid_t finishedPid = waitpid(WAIT_MYPGRP, &status, 0);
 
 	AssertIsWaitAnySuccessful(finishedPid);
-	AssertIsChildSuccess(status);
+	bool success = EvaluateManagerProcessStatus(status, finishedPid);
+	HandleFinishedProcess(finishedPid, success);
 
-	HandleFinishedProcess(finishedPid);
+	return success;
 }
 
-void ProcessManager::WaitAll()
+bool ProcessManager::WaitAll()
 {
+	bool allSuccess = true;
+
 	for (auto& process : m_activeProcesses)
 	{
-		process.Wait();
+		if (!process.Wait())
+		{
+			allSuccess = false;
+		}
 	}
 
 	m_activeProcesses.clear();
+	return allSuccess;
 }
 
 size_t ProcessManager::Count() const
@@ -70,7 +92,7 @@ bool ProcessManager::Empty() const
 	return m_activeProcesses.empty();
 }
 
-void ProcessManager::HandleFinishedProcess(pid_t pid)
+void ProcessManager::HandleFinishedProcess(pid_t pid, bool success)
 {
 	auto it = std::ranges::find_if(m_activeProcesses,
 		[pid](const Process& process) {
@@ -79,7 +101,7 @@ void ProcessManager::HandleFinishedProcess(pid_t pid)
 
 	if (it != m_activeProcesses.end())
 	{
-		it->MarkAsWaited();
+		it->MarkAsWaited(success);
 		m_activeProcesses.erase(it);
 	}
 }
