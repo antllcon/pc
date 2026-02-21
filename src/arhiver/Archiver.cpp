@@ -1,5 +1,6 @@
 #include "Archiver.h"
 #include "src/process/ProcessManager.h"
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -7,6 +8,12 @@ namespace
 {
 constexpr auto GZIP = "gzip";
 constexpr auto TAR = "tar";
+constexpr auto FLAG_CREATE_ARCHIVE = "-cf";
+constexpr auto FLAG_EXTRACT_ARCHIVE = "-xf";
+constexpr auto FLAG_OUTPUT_DIR = "-C";
+constexpr auto FLAG_DECOMPRESS = "-d";
+constexpr auto FLAG_FORCE = "-f";
+constexpr auto FLAG_KEEP_ORIGINAL = "-k";
 
 void AssertProcessesCountValid(size_t processes)
 {
@@ -32,9 +39,17 @@ void AssertIsDirectoryReady(const fs::path& path)
 	}
 }
 
+void AssertIsSuccessfulTempFilesNotEmpty(const std::vector<std::string>& successfulTempFiles)
+{
+	if (successfulTempFiles.empty())
+	{
+		throw ::std::logic_error("Архивация отменена: нет успешно сжатых файлов.");
+	}
+}
+
 void RunTarCreate(const std::string& archiveName, const std::vector<std::string>& gzFiles)
 {
-	std::vector<std::string> args = {"-cf", archiveName};
+	std::vector<std::string> args = {FLAG_CREATE_ARCHIVE, archiveName};
 	args.insert(args.end(), gzFiles.begin(), gzFiles.end());
 
 	Process tar(TAR, args);
@@ -43,7 +58,7 @@ void RunTarCreate(const std::string& archiveName, const std::vector<std::string>
 
 void RunTarExtract(const std::string& archiveName, const std::string& outputFolder)
 {
-	Process tar(TAR, {"-xf", archiveName, "-C", outputFolder});
+	Process tar(TAR, {FLAG_EXTRACT_ARCHIVE, archiveName, FLAG_OUTPUT_DIR, outputFolder});
 	tar.Wait();
 }
 
@@ -57,21 +72,50 @@ std::string ScheduleCompression(
 		manager.WaitAny();
 	}
 
-	manager.Add(Process(GZIP, {"-k", "-f", inputFile}));
+	manager.Add(Process(GZIP, {FLAG_KEEP_ORIGINAL, FLAG_FORCE, inputFile}));
 	return inputFile + ".gz";
 }
 
 void ScheduleDecompression(
-		ProcessManager& manager,
-		const std::string& gzFile,
-		size_t maxProcesses)
+	ProcessManager& manager,
+	const std::string& gzFile,
+	size_t maxProcesses)
 {
 	if (manager.Count() >= maxProcesses)
 	{
 		manager.WaitAny();
 	}
 
-	manager.Add(Process(GZIP, {"-d", "-f", gzFile}));
+	manager.Add(Process(GZIP, {FLAG_DECOMPRESS, FLAG_FORCE, gzFile}));
+}
+
+std::vector<std::string> FilterSuccessfulFiles(
+	const std::vector<std::string>& tempFiles,
+	const std::vector<std::string>& originalFiles)
+{
+	std::vector<std::string> validFiles;
+	validFiles.reserve(tempFiles.size());
+
+	for (size_t i = 0; i < tempFiles.size(); ++i)
+	{
+		if (fs::exists(tempFiles[i]) && fs::file_size(tempFiles[i]) > 0)
+		{
+			validFiles.push_back(tempFiles[i]);
+		}
+		else
+		{
+			std::cerr << "Внимание: файл '" << originalFiles[i] << "' был пропущен из-за ошибки сжатия." << std::endl;
+
+			if (fs::exists(tempFiles[i]))
+			{
+				fs::remove(tempFiles[i]);
+			}
+		}
+	}
+
+	AssertIsSuccessfulTempFilesNotEmpty(validFiles);
+
+	return validFiles;
 }
 
 void CleanupTempFiles(const std::vector<std::string>& files)
@@ -79,6 +123,18 @@ void CleanupTempFiles(const std::vector<std::string>& files)
 	for (const auto& file : files)
 	{
 		fs::remove(file);
+	}
+}
+
+void CleanupFailedExtractions(const std::string& outputFolder)
+{
+	for (const auto& entry : fs::directory_iterator(outputFolder))
+	{
+		if (entry.path().extension() == ".gz")
+		{
+			std::cerr << "Внимание: не удалось распаковать файл '" << entry.path().string() << "'." << std::endl;
+			fs::remove(entry.path());
+		}
 	}
 }
 } // namespace
@@ -102,6 +158,8 @@ void Archiver::CreateArchive(
 	}
 
 	processManager.WaitAll();
+
+	auto successfulTempFiles = FilterSuccessfulFiles(tempFiles, inputFiles);
 	RunTarCreate(archiveName, tempFiles);
 	CleanupTempFiles(tempFiles);
 }
@@ -131,10 +189,12 @@ void Archiver::ExtractArchive(
 			ScheduleDecompression(
 				processManager,
 				entry.path().string(),
-				parallelProcesses
-			);
+				parallelProcesses);
 		}
 	}
 
-	processManager.WaitAll();
+	if (!processManager.WaitAll())
+	{
+		CleanupFailedExtractions(outputFolder);
+	}
 }
