@@ -1,4 +1,5 @@
 #include "Parser.h"
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 
@@ -25,6 +26,27 @@ void AssertFilesExist(const std::vector<std::string>& files)
 	if (files.empty())
 	{
 		throw std::runtime_error("Не указаны входные файлы");
+	}
+}
+
+void AppendPathFiles(const std::string& inputPath, std::vector<std::string>& outFiles)
+{
+	namespace fs = std::filesystem;
+	fs::path path(inputPath);
+
+	if (fs::is_directory(path))
+	{
+		for (const auto& entry : fs::directory_iterator(path))
+		{
+			if (entry.is_regular_file())
+			{
+				outFiles.push_back(entry.path().string());
+			}
+		}
+	}
+	else
+	{
+		outFiles.push_back(path.string());
 	}
 }
 } // namespace
@@ -63,11 +85,12 @@ ArchiveSettings ParseArchiveArgs(int argc, char* argv[])
 	{
 		throw std::runtime_error("Не указано имя архива");
 	}
+
 	settings.archiveName = argv[argIndex++];
 
 	for (; argIndex < argc; ++argIndex)
 	{
-		settings.inputFiles.emplace_back(argv[argIndex]);
+		AppendPathFiles(argv[argIndex], settings.inputFiles);
 	}
 
 	AssertFilesExist(settings.inputFiles);
