@@ -113,6 +113,7 @@ Process& Process::operator=(Process&& other) noexcept
 
 		m_pid = other.m_pid;
 		m_waited = other.m_waited;
+		m_success = other.m_success;
 
 		other.m_pid = -1;
 		other.m_waited = true;
