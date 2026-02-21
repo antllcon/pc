@@ -19,7 +19,7 @@ void AssertIsArgcValid(int argc)
 
 void RunMakeArchive(int argc, char* argv[])
 {
-	auto settings = Parser::ParseMakeArgs(argc, argv);
+	auto settings = Parser::ParseArchiveArgs(argc, argv);
 	Archiver::CreateArchive(settings.archiveName, settings.inputFiles, settings.processes);
 }
 

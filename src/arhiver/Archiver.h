@@ -9,10 +9,10 @@ public:
 	static void CreateArchive(
 		const std::string& archiveName,
 		const std::vector<std::string>& inputFiles,
-		size_t parallelJobs);
+		size_t parallelProcesses);
 
 	static void ExtractArchive(
 		const std::string& archiveName,
 		const std::string& outputFolder,
-		size_t parallelJobs);
+		size_t parallelProcesses);
 };

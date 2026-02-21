@@ -5,9 +5,12 @@ namespace fs = std::filesystem;
 
 namespace
 {
-void AssertJobCountValid(size_t jobs)
+constexpr auto GZIP = "gzip";
+constexpr auto TAR = "tar";
+
+void AssertProcessesCountValid(size_t processes)
 {
-	if (jobs == 0)
+	if (processes == 0)
 	{
 		throw std::runtime_error("Количество процессов должно быть больше 0");
 	}
@@ -34,41 +37,41 @@ void RunTarCreate(const std::string& archiveName, const std::vector<std::string>
 	std::vector<std::string> args = {"-cf", archiveName};
 	args.insert(args.end(), gzFiles.begin(), gzFiles.end());
 
-	Process tar("tar", args);
+	Process tar(TAR, args);
 	tar.Wait();
 }
 
 void RunTarExtract(const std::string& archiveName, const std::string& outputFolder)
 {
-	Process tar("tar", {"-xf", archiveName, "-C", outputFolder});
+	Process tar(TAR, {"-xf", archiveName, "-C", outputFolder});
 	tar.Wait();
 }
 
 std::string ScheduleCompression(
 	ProcessManager& manager,
 	const std::string& inputFile,
-	size_t maxJobs)
+	size_t maxProcesses)
 {
-	if (manager.Count() >= maxJobs)
+	if (manager.Count() >= maxProcesses)
 	{
 		manager.WaitAny();
 	}
 
-	manager.Add(Process("gzip", {"-k", "-f", inputFile}));
+	manager.Add(Process(GZIP, {"-k", "-f", inputFile}));
 	return inputFile + ".gz";
 }
 
 void ScheduleDecompression(
 		ProcessManager& manager,
 		const std::string& gzFile,
-		size_t maxJobs)
+		size_t maxProcesses)
 {
-	if (manager.Count() >= maxJobs)
+	if (manager.Count() >= maxProcesses)
 	{
 		manager.WaitAny();
 	}
 
-	manager.Add(Process("gzip", {"-d", "-f", gzFile}));
+	manager.Add(Process(GZIP, {"-d", "-f", gzFile}));
 }
 
 void CleanupTempFiles(const std::vector<std::string>& files)
@@ -83,9 +86,9 @@ void CleanupTempFiles(const std::vector<std::string>& files)
 void Archiver::CreateArchive(
 	const std::string& archiveName,
 	const std::vector<std::string>& inputFiles,
-	size_t parallelJobs)
+	size_t parallelProcesses)
 {
-	AssertJobCountValid(parallelJobs);
+	AssertProcessesCountValid(parallelProcesses);
 	std::vector<std::string> tempFiles;
 
 	tempFiles.reserve(inputFiles.size());
@@ -94,7 +97,7 @@ void Archiver::CreateArchive(
 	for (const auto& inputFile : inputFiles)
 	{
 		AssertIsFileExists(inputFile);
-		std::string name = ScheduleCompression(processManager, inputFile, parallelJobs);
+		std::string name = ScheduleCompression(processManager, inputFile, parallelProcesses);
 		tempFiles.push_back(name);
 	}
 
@@ -106,9 +109,9 @@ void Archiver::CreateArchive(
 void Archiver::ExtractArchive(
 	const std::string& archiveName,
 	const std::string& outputFolder,
-	size_t parallelJobs)
+	size_t parallelProcesses)
 {
-	AssertJobCountValid(parallelJobs);
+	AssertProcessesCountValid(parallelProcesses);
 	AssertIsFileExists(archiveName);
 	AssertIsDirectoryReady(outputFolder);
 
@@ -128,7 +131,7 @@ void Archiver::ExtractArchive(
 			ScheduleDecompression(
 				processManager,
 				entry.path().string(),
-				parallelJobs
+				parallelProcesses
 			);
 		}
 	}

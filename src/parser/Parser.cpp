@@ -31,12 +31,12 @@ namespace
 
 namespace Parser
 {
-    MakeSettings ParseMakeArgs(int argc, char* argv[])
+    ArchiveSettings ParseArchiveArgs(int argc, char* argv[])
     {
         AssertArgCount(argc, 4, "Синтаксис: start make-archive -S/-P [ARGS]...");
 
         std::string mode = argv[2];
-        MakeSettings settings;
+        ArchiveSettings settings;
         int argIndex = 0;
 
         if (mode == "-S")
