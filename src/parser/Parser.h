@@ -5,7 +5,7 @@
 
 namespace Parser
 {
-struct MakeSettings
+struct ArchiveSettings
 {
 	size_t processes;
 	std::string archiveName;
@@ -19,6 +19,6 @@ struct ExtractSettings
 	std::string outputFolder;
 };
 
-MakeSettings ParseMakeArgs(int argc, char* argv[]);
+ArchiveSettings ParseArchiveArgs(int argc, char* argv[]);
 ExtractSettings ParseExtractArgs(int argc, char* argv[]);
-}
+} // namespace Parser

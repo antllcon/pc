@@ -56,6 +56,7 @@ void ProcessManager::WaitAll()
 	{
 		process.Wait();
 	}
+
 	m_activeProcesses.clear();
 }
 
