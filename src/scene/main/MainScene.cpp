@@ -1,10 +1,9 @@
 #include "MainScene.h"
-#include "../../controller/simulation/SimulationController.h"
 #include "../../controller/theme/ThemeController.h"
-#include "../../model/simulation/SimulationModel.h"
-#include "../../view/simulation/SimulationView.h"
 #include "../../view/theme/ThemeView.h"
 #include "../../view/toast/ToastView.h"
+#include "src/controller/life/LifeController.h"
+#include "src/view/life/LifeView.h"
 
 void MainScene::Init(std::shared_ptr<ThemeModel> themeModel)
 {
@@ -15,15 +14,16 @@ void MainScene::Init(std::shared_ptr<ThemeModel> themeModel)
 	themeModel->RegisterObserver(themeView);
 	AddView(themeView);
 
-	auto simulationModel = std::make_shared<SimulationModel>();
-	AddModel(simulationModel);
+	auto lifeModel = std::make_shared<LifeModel>();
+	AddModel(lifeModel);
 
-	auto simulationController = std::make_shared<SimulationController>(simulationModel);
-	AddController(simulationController);
+	auto lifeController = std::make_shared<LifeController>(lifeModel);
+	AddController(lifeController);
 
-	auto simulationView = std::make_shared<SimulationView>(simulationModel, simulationController);
-	simulationModel->RegisterObserver(simulationView);
-	AddView(simulationView);
+	auto lifeView = std::make_shared<LifeView>(lifeModel, themeModel, lifeController);
+	lifeModel->RegisterObserver(lifeView);
+	themeModel->RegisterObserver(lifeView);
+	AddView(lifeView);
 
 	auto toastModel = std::make_shared<ToastModel>();
 	AddModel(toastModel);

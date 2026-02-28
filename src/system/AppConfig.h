@@ -8,9 +8,9 @@
 
 namespace AppConfig
 {
-constexpr auto WINDOW_WIDTH = 400u;
+constexpr auto WINDOW_WIDTH = 800u;
 constexpr auto WINDOW_HEIGHT = 800u;
-constexpr auto WINDOW_NAME = "Bouncing balls";
+constexpr auto WINDOW_NAME = "Life";
 constexpr auto WINDOW_STYLE = sf::Style::Titlebar | sf::Style::Close;
 
 constexpr auto FRAMERATE_LIMIT = 144u;
