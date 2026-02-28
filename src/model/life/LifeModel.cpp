@@ -149,20 +149,14 @@ LifeData LifeModel::GetChangedData() const
 
 void LifeModel::PerformSimulationStep()
 {
-	auto numThreads = std::thread::hardware_concurrency();
-
-	if (numThreads == 0)
-	{
-		numThreads = 4;
-	}
-
-	auto rowsPerThread = m_data.height / numThreads;
+	unsigned int numThreads = std::thread::hardware_concurrency();
+	unsigned int rowsPerThread = m_data.height / numThreads;
 	std::vector<std::future<bool>> futures;
 
-	for (auto i = 0; i < numThreads; ++i)
+	for (unsigned int i = 0; i < numThreads; ++i)
 	{
-		auto startRow = i * rowsPerThread;
-		auto endRow = (i == numThreads - 1) ? m_data.height : startRow + rowsPerThread;
+		unsigned int startRow = i * rowsPerThread;
+		unsigned int endRow = (i == numThreads - 1) ? m_data.height : startRow + rowsPerThread;
 
 		futures.push_back(m_threadPool.Dispatch(
 			[this, startRow, endRow]() -> bool {
@@ -170,12 +164,12 @@ void LifeModel::PerformSimulationStep()
 				int w = static_cast<int>(m_data.width);
 				int h = static_cast<int>(m_data.height);
 
-				for (auto y = startRow; y < endRow; ++y)
+				for (unsigned int y = startRow; y < endRow; ++y)
 				{
-					for (auto x = 0; x < m_data.width; ++x)
+					for (unsigned int x = 0; x < m_data.width; ++x)
 					{
-						auto aliveNeighbors = CountAliveNeighbors(m_data.field, static_cast<int>(x), static_cast<int>(y), w, h);
-						auto index = y * m_data.width + x;
+						unsigned int aliveNeighbors = CountAliveNeighbors(m_data.field, static_cast<int>(x), static_cast<int>(y), w, h);
+						unsigned int index = y * m_data.width + x;
 						bool isAlive = m_data.field[index] != 0;
 
 						if (isAlive)
