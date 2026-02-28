@@ -62,9 +62,8 @@ bool GenerateLife(double probability)
 } // namespace
 
 LifeModel::LifeModel()
-	: m_threadPool(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 4)
+	: m_threadPool(std::thread::hardware_concurrency())
 	, m_timer(0.0f)
-	, m_updateInterval(DEFAULT_UPDATE_INTERVAL)
 {
 	m_data.width = FIELD_WIDTH;
 	m_data.height = FIELD_HEIGHT;
@@ -84,7 +83,7 @@ void LifeModel::Update(float dt)
 
 	m_timer += dt;
 
-	if (m_timer >= m_updateInterval)
+	if (m_timer >= DEFAULT_UPDATE_INTERVAL)
 	{
 		m_timer = 0.0f;
 		PerformSimulationStep();
@@ -150,19 +149,20 @@ LifeData LifeModel::GetChangedData() const
 
 void LifeModel::PerformSimulationStep()
 {
-	unsigned int numThreads = std::thread::hardware_concurrency();
+	auto numThreads = std::thread::hardware_concurrency();
+
 	if (numThreads == 0)
 	{
 		numThreads = 4;
 	}
 
-	unsigned int rowsPerThread = m_data.height / numThreads;
+	auto rowsPerThread = m_data.height / numThreads;
 	std::vector<std::future<bool>> futures;
 
-	for (unsigned int i = 0; i < numThreads; ++i)
+	for (auto i = 0; i < numThreads; ++i)
 	{
-		unsigned int startRow = i * rowsPerThread;
-		unsigned int endRow = (i == numThreads - 1) ? m_data.height : startRow + rowsPerThread;
+		auto startRow = i * rowsPerThread;
+		auto endRow = (i == numThreads - 1) ? m_data.height : startRow + rowsPerThread;
 
 		futures.push_back(m_threadPool.Dispatch(
 			[this, startRow, endRow]() -> bool {
@@ -170,12 +170,12 @@ void LifeModel::PerformSimulationStep()
 				int w = static_cast<int>(m_data.width);
 				int h = static_cast<int>(m_data.height);
 
-				for (unsigned int y = startRow; y < endRow; ++y)
+				for (auto y = startRow; y < endRow; ++y)
 				{
-					for (unsigned int x = 0; x < m_data.width; ++x)
+					for (auto x = 0; x < m_data.width; ++x)
 					{
-						unsigned int aliveNeighbors = CountAliveNeighbors(m_data.field, static_cast<int>(x), static_cast<int>(y), w, h);
-						unsigned int index = y * m_data.width + x;
+						auto aliveNeighbors = CountAliveNeighbors(m_data.field, static_cast<int>(x), static_cast<int>(y), w, h);
+						auto index = y * m_data.width + x;
 						bool isAlive = m_data.field[index] != 0;
 
 						if (isAlive)

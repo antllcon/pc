@@ -39,7 +39,5 @@ private:
 	std::vector<uint8_t> m_nextField;
 	ThreadPool m_threadPool;
 	std::unordered_set<size_t> m_history;
-
 	float m_timer;
-	float m_updateInterval;
 };
