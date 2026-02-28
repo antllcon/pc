@@ -194,6 +194,7 @@ void Archiver::ExtractArchive(
 	}
 
 	{
+		ScopedTimer parallelTimer("Параллельная часть (разжатие)", std::cout);
 		ProcessManager processManager;
 
 		for (const auto& entry : fs::recursive_directory_iterator(outputFolder))
@@ -211,7 +212,5 @@ void Archiver::ExtractArchive(
 		{
 			CleanupFailedExtractions(outputFolder);
 		}
-
-		ScopedTimer parallelTimer("Параллельная часть (разжатие)", std::cout);
 	}
 }
