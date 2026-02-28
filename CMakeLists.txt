@@ -10,16 +10,32 @@ file(GLOB_RECURSE HEADER_FILES "src/*.h")
 list(REMOVE_ITEM SRC_FILES "src/main.cpp")
 
 if (MSVC)
-    add_compile_options(/utf-8 /W4 /WX)
+    set(PROJECT_WARNINGS /utf-8 /W4 /WX)
 else ()
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+    set(PROJECT_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 endif ()
+
+set(BUILD_SHARED_LIBS OFF)
+include(FetchContent)
+FetchContent_Declare(
+        SFML
+        GIT_REPOSITORY https://github.com/SFML/SFML.git
+        GIT_TAG 3.0.1
+)
+FetchContent_MakeAvailable(SFML)
 
 add_library(core_lib STATIC ${SRC_FILES} ${HEADER_FILES})
 target_include_directories(core_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(core_lib PRIVATE ${PROJECT_WARNINGS})
+target_link_libraries(core_lib PUBLIC SFML::Graphics SFML::Window SFML::System)
+
+if (WIN32)
+    target_link_libraries(core_lib PUBLIC dwmapi)
+endif ()
 
 add_executable(start src/main.cpp)
 target_link_libraries(start PRIVATE core_lib)
+target_compile_options(start PRIVATE ${PROJECT_WARNINGS})
 set_target_properties(start PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/res")
 
 option(BUILD_TESTING "Build the tests" ON)
@@ -43,28 +59,5 @@ if (BUILD_TESTING)
 
         include(GoogleTest)
         gtest_discover_tests(tests)
-    endif ()
-endif ()
-
-option(BUILD_BENCHMARKS "Build the benchmarks" ON)
-
-if (BUILD_BENCHMARKS)
-    include(FetchContent)
-
-    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
-    set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-
-    FetchContent_Declare(
-            googlebenchmark
-            URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(googlebenchmark)
-
-    file(GLOB_RECURSE BENCHMARK_FILES "benchmarks/*.cpp")
-
-    if (BENCHMARK_FILES)
-        add_executable(benchmarks ${BENCHMARK_FILES})
-        target_link_libraries(benchmarks PRIVATE core_lib benchmark::benchmark_main)
     endif ()
 endif ()
