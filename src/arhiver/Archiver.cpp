@@ -1,5 +1,7 @@
 #include "Archiver.h"
 #include "src/process/ProcessManager.h"
+#include "src/timer/ScopedTimer.h"
+
 #include <iostream>
 
 namespace fs = std::filesystem;
@@ -146,21 +148,29 @@ void Archiver::CreateArchive(
 {
 	AssertProcessesCountValid(parallelProcesses);
 	std::vector<std::string> tempFiles;
-
 	tempFiles.reserve(inputFiles.size());
-	ProcessManager processManager;
 
-	for (const auto& inputFile : inputFiles)
 	{
-		AssertIsFileExists(inputFile);
-		std::string name = ScheduleCompression(processManager, inputFile, parallelProcesses);
-		tempFiles.push_back(name);
+		ScopedTimer parallelTimer("Параллельная часть (сжатие)", std::cout);
+		ProcessManager processManager;
+
+		for (const auto& inputFile : inputFiles)
+		{
+			AssertIsFileExists(inputFile);
+			std::string name = ScheduleCompression(processManager, inputFile, parallelProcesses);
+			tempFiles.push_back(name);
+		}
+
+		processManager.WaitAll();
 	}
 
-	processManager.WaitAll();
-
 	auto successfulTempFiles = FilterSuccessfulFiles(tempFiles, inputFiles);
-	RunTarCreate(archiveName, tempFiles);
+
+	{
+		ScopedTimer constantTimer("Последовательная часть (сборка)", std::cout);
+		RunTarCreate(archiveName, tempFiles);
+	}
+
 	CleanupTempFiles(tempFiles);
 }
 
@@ -178,23 +188,30 @@ void Archiver::ExtractArchive(
 		fs::create_directories(outputFolder);
 	}
 
-	RunTarExtract(archiveName, outputFolder);
-
-	ProcessManager processManager;
-
-	for (const auto& entry : fs::recursive_directory_iterator(outputFolder))
 	{
-		if (entry.path().extension() == ".gz")
-		{
-			ScheduleDecompression(
-				processManager,
-				entry.path().string(),
-				parallelProcesses);
-		}
+		ScopedTimer constantTimer("Последовательная часть (распаковка)", std::cout);
+		RunTarExtract(archiveName, outputFolder);
 	}
 
-	if (!processManager.WaitAll())
 	{
-		CleanupFailedExtractions(outputFolder);
+		ProcessManager processManager;
+
+		for (const auto& entry : fs::recursive_directory_iterator(outputFolder))
+		{
+			if (entry.path().extension() == ".gz")
+			{
+				ScheduleDecompression(
+					processManager,
+					entry.path().string(),
+					parallelProcesses);
+			}
+		}
+
+		if (!processManager.WaitAll())
+		{
+			CleanupFailedExtractions(outputFolder);
+		}
+
+		ScopedTimer parallelTimer("Параллельная часть (разжатие)", std::cout);
 	}
 }
