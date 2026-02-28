@@ -32,6 +32,8 @@ void RunExtractFiles(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+	auto start = std::chrono::high_resolution_clock::now();
+
 	try
 	{
 		AssertIsArgcValid(argc);
@@ -40,16 +42,25 @@ int main(int argc, char* argv[])
 
 		if (command == MAKE_ARCHIVE)
 		{
+			std::cout << "Архивируем..." << std::endl;
 			RunMakeArchive(argc, argv);
 		}
 		else if (command == EXTRACT_ARCHIVE)
 		{
+			std::cout << "Распаковываем..." << std::endl;
 			RunExtractFiles(argc, argv);
 		}
 		else
 		{
 			throw std::runtime_error("Неизвестная команда: " + command);
 		}
+
+		auto end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> duration = end - start;
+
+		std::cout << std::fixed << std::setprecision(3);
+		std::cout << "Время тик-так: " << duration.count() << " s" << std::endl;
+
 	}
 	catch (std::exception& e)
 	{

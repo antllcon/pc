@@ -182,7 +182,7 @@ void Archiver::ExtractArchive(
 
 	ProcessManager processManager;
 
-	for (const auto& entry : fs::directory_iterator(outputFolder))
+	for (const auto& entry : fs::recursive_directory_iterator(outputFolder))
 	{
 		if (entry.path().extension() == ".gz")
 		{
