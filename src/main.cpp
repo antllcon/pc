@@ -10,7 +10,6 @@ int main(int argc, char* argv[])
 	try
 	{
 		ConsoleEncoding consoleEncoding;
-
 	}
 	catch (std::exception& e)
 	{
