@@ -1,0 +1,98 @@
+360
+D3P-
+D3P-
+D4P-
+
+
+
+A3P-
+
+G#3P-
+
+G3P-
+
+F3P-
+D3P-
+F3P-
+G3P-
+C3P-
+C3P-
+D4P-
+
+
+
+A3P-
+
+G#3P-
+
+G3P-
+
+F3P-
+D3P-
+F3P-
+G3P-
+B2P-
+B2P-
+D4P-
+
+
+
+A3P-
+
+G#3P-
+
+G3P-
+
+F3P-
+D3P-
+F3P-
+G3P-
+A#2P-
+A#2P-
+D4P-
+
+
+
+A3P-
+
+G#3P-
+
+G3P-
+
+F3P-
+D3P-
+F3P-
+G3P-
+D3P- | D2\-
+D3P-
+D4P- | D2\-
+
+     | D2\-
+
+A3P- | D2\-
+
+G#3P- | D2\-
+
+G3P- | D2\-
+
+F3P- | D2\-
+D3P-
+F3P- | D2\-
+G3P-
+C3P- | C2\-
+C3P-
+D4P- | C2\-
+
+     | C2\-
+
+A3P- | C2\-
+
+G#3P- | C2\-
+
+G3P- | C2\-
+
+F3P- | C2\-
+D3P-
+F3P- | C2\-
+G3P-
+END
