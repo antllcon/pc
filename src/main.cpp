@@ -15,7 +15,7 @@
 
 namespace
 {
-std::atomic<bool> g_isTerminated{false};
+std::atomic g_isTerminated{false};
 
 void SignalHandler(int signal)
 {
