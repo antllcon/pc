@@ -5,6 +5,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(FetchContent)
+
+FetchContent_Declare(
+        asio
+        GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+        GIT_TAG        asio-1-30-2
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(asio)
+
+add_library(asio_lib INTERFACE)
+target_include_directories(asio_lib SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
+target_compile_definitions(asio_lib INTERFACE ASIO_STANDALONE _WIN32_WINNT=0x0601)
+
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
 file(GLOB_RECURSE HEADER_FILES "src/*.h")
 list(REMOVE_ITEM SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
@@ -17,6 +31,11 @@ endif ()
 
 add_library(core_lib STATIC ${SRC_FILES} ${HEADER_FILES})
 target_include_directories(core_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(core_lib PUBLIC asio_lib)
+
+if (WIN32)
+    target_link_libraries(core_lib PUBLIC ws2_32 winmm ole32)
+endif ()
 
 add_executable(start src/main.cpp)
 target_link_libraries(start PRIVATE core_lib)
@@ -26,7 +45,6 @@ option(BUILD_TESTING "Build the tests" ON)
 
 if (BUILD_TESTING)
     enable_testing()
-    include(FetchContent)
     FetchContent_Declare(
             googletest
             URL https://github.com/google/googletest/archive/52eb8108c5bdec04579160ae17225d66034bd723.zip
@@ -49,8 +67,6 @@ endif ()
 option(BUILD_BENCHMARKS "Build the benchmarks" ON)
 
 if (BUILD_BENCHMARKS)
-    include(FetchContent)
-
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
     set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
