@@ -1,17 +1,23 @@
 #pragma once
 
-#include <Windows.h>
+#include <string>
 
-class ConsoleEncoding
+class ConsoleEncoding final
 {
 public:
 	ConsoleEncoding();
-	~ConsoleEncoding();
+	~ConsoleEncoding() noexcept;
 
 	ConsoleEncoding(const ConsoleEncoding&) = delete;
 	ConsoleEncoding& operator=(const ConsoleEncoding&) = delete;
+	ConsoleEncoding(ConsoleEncoding&&) = delete;
+	ConsoleEncoding& operator=(ConsoleEncoding&&) = delete;
 
 private:
-	UINT m_oldOutputCodePage;
-	UINT m_oldInputCodePage;
+#ifdef _WIN32
+	unsigned int m_previousOutputCp;
+	unsigned int m_previousInputCp;
+#else
+	std::string m_previousLocale;
+#endif
 };

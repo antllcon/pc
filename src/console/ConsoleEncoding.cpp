@@ -1,57 +1,60 @@
 #include "ConsoleEncoding.h"
 #include <stdexcept>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <clocale>
+#endif
+
 namespace
 {
-void AssertIsOsApiSuccessful(const BOOL result)
+void AssertIsEncodingSet(bool success)
 {
-	if (!result)
+	if (!success)
 	{
-		throw std::runtime_error("Error call API OS");
+		throw std::runtime_error("Couldn't configure the encoding of the console");
 	}
 }
 
-UINT GetOutputCodePage()
+#ifndef _WIN32
+std::string SaveCurrentLocale()
 {
-	return GetConsoleOutputCP();
+	const char* locale = std::setlocale(LC_ALL, nullptr);
+	return locale ? locale : "";
+}
+#endif
 }
 
-UINT GetInputCodePage()
-{
-	return GetConsoleCP();
-}
-
-void SetUtf8Output()
-{
-	AssertIsOsApiSuccessful(SetConsoleOutputCP(CP_UTF8));
-}
-
-void SetUtf8Input()
-{
-	AssertIsOsApiSuccessful(SetConsoleCP(CP_UTF8));
-}
-
-void RestoreOutput(UINT cp)
-{
-	SetConsoleOutputCP(cp);
-}
-
-void RestoreInput(UINT cp)
-{
-	SetConsoleCP(cp);
-}
-}
+#ifdef _WIN32
 
 ConsoleEncoding::ConsoleEncoding()
-	: m_oldOutputCodePage(GetOutputCodePage())
-	, m_oldInputCodePage(GetInputCodePage())
+	: m_previousOutputCp(GetConsoleOutputCP())
+	, m_previousInputCp(GetConsoleCP())
 {
-	SetUtf8Output();
-	SetUtf8Input();
+	AssertIsEncodingSet(SetConsoleOutputCP(CP_UTF8) != 0);
+	AssertIsEncodingSet(SetConsoleCP(CP_UTF8) != 0);
 }
 
-ConsoleEncoding::~ConsoleEncoding()
+ConsoleEncoding::~ConsoleEncoding() noexcept
 {
-	RestoreOutput(m_oldOutputCodePage);
-	RestoreInput(m_oldInputCodePage);
+	SetConsoleOutputCP(m_previousOutputCp);
+	SetConsoleCP(m_previousInputCp);
 }
+
+#else
+
+ConsoleEncoding::ConsoleUtf8Scope()
+	: m_previousLocale(SaveCurrentLocale())
+{
+	AssertIsEncodingSet(std::setlocale(LC_ALL, "") != nullptr);
+}
+
+ConsoleEncoding::~ConsoleUtf8Scope() noexcept
+{
+	std::setlocale(LC_ALL, m_previousLocale.c_str());
+}
+
+#endif
+
+
