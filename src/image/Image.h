@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stdexcept>
 #include <string>
 
 class Image
@@ -14,9 +13,9 @@ public:
 	Image(Image&& other) noexcept;
 	Image& operator=(Image&& other) noexcept;
 
-	int GetWidth() const;
-	int GetHeight() const;
-	int GetChannels() const;
+	unsigned int GetWidth() const;
+	unsigned int GetHeight() const;
+	unsigned int GetChannels() const;
 
 	const unsigned char* GetData() const;
 	unsigned char* GetData();
@@ -26,8 +25,8 @@ private:
 	void Free() noexcept;
 
 private:
-	int m_width = 0;
-	int m_height = 0;
-	int m_channels = 0;
+	unsigned int m_width = 0;
+	unsigned int m_height = 0;
+	unsigned int m_channels = 0;
 	unsigned char* m_data = nullptr;
 };
