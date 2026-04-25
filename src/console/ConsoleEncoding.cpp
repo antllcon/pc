@@ -44,13 +44,13 @@ ConsoleEncoding::~ConsoleEncoding() noexcept
 
 #else
 
-ConsoleEncoding::ConsoleUtf8Scope()
+ConsoleEncoding::ConsoleEncoding()
 	: m_previousLocale(SaveCurrentLocale())
 {
-	AssertIsEncodingSet(std::setlocale(LC_ALL, "") != nullptr);
+	AssertIsEncodingSet(std::setlocale(LC_ALL, ".UTF-8") != nullptr);
 }
 
-ConsoleEncoding::~ConsoleUtf8Scope() noexcept
+ConsoleEncoding::~ConsoleEncoding() noexcept
 {
 	std::setlocale(LC_ALL, m_previousLocale.c_str());
 }
