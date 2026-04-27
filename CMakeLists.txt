@@ -60,7 +60,7 @@ if (BUILD_TESTING)
         target_link_libraries(tests PRIVATE core_lib GTest::gmock_main)
 
         include(GoogleTest)
-        gtest_discover_tests(tests)
+        gtest_discover_tests(tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     endif ()
 endif ()
 
