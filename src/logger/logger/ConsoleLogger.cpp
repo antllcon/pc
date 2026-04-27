@@ -15,7 +15,7 @@ void ConsoleLogger::Log(const std::string& message)
 	}
 
 	std::osyncstream(std::cout)
-		<< "[thread " << std::this_thread::get_id() << "] "
+		// << "[thread " << std::this_thread::get_id() << "] "
 		<< message
 		<< std::endl;
 }
