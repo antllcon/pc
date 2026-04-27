@@ -6,24 +6,47 @@
 #include "src/logger/logger/ConsoleLogger.h"
 #include "src/logger/timer/ScopedTimer.h"
 
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <syncstream>
+
+namespace
+{
+std::filesystem::path BuildOutputPath(const std::filesystem::path& imagePath)
+{
+	return imagePath.parent_path() / (imagePath.stem().string() + "_histogram.txt");
+}
+
+void AssertIsFileOpened(const std::ofstream& file, const std::filesystem::path& path)
+{
+	if (!file.is_open())
+	{
+		throw std::runtime_error("Не удалось создать файл: " + path.string());
+	}
+}
+} // namespace
 
 int main(const int argc, char* argv[])
 {
 	try
 	{
 		ConsoleEncoding consoleEncoding;
-		const auto logger = std::make_shared<ConsoleLogger>(true);
+		auto logger = std::make_shared<ConsoleLogger>(true);
 
-		auto path = ConsoleArgs::ExtractImagePath(argc, argv);
-		const auto image = Image(path.string());
+		auto imagePath = ConsoleArgs::ExtractImagePath(argc, argv);
+		auto image = Image(imagePath.string());
 
 		{
 			const ScopedTimer timer("построение гистограммы", logger);
-			const auto histogram = HistogramBuilder::Build(image);
-			std::cout << histogram;
+			auto histogram = HistogramBuilder::Build(image);
+
+			auto outputPath = BuildOutputPath(imagePath);
+			std::ofstream file(outputPath);
+			AssertIsFileOpened(file, outputPath);
+			file << histogram;
 		}
 	}
 	catch (const std::exception& e)

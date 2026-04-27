@@ -22,6 +22,7 @@ public:
 
 	unsigned int GetWidth() const;
 	unsigned int GetHeight() const;
+	size_t GetPixelCount() const;
 	unsigned int GetChannels() const;
 
 	const unsigned char* GetData() const;

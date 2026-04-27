@@ -34,8 +34,8 @@ void AssertThreeChannels(const Image& image)
 
 unsigned int CalculateSideLimit(const unsigned int side, const unsigned int width, const unsigned int height)
 {
-    const unsigned int maxSide = std::min(width, height);
-    return std::min(side, maxSide);
+	const unsigned int maxSide = std::min(width, height);
+	return std::min(side, maxSide);
 }
 } // namespace
 
@@ -85,6 +85,11 @@ unsigned int Image::GetHeight() const
 	return m_height;
 }
 
+size_t Image::GetPixelCount() const
+{
+	return static_cast<size_t>(m_width * m_height);
+}
+
 unsigned int Image::GetChannels() const
 {
 	return m_channels;
@@ -102,7 +107,7 @@ unsigned char* Image::GetData()
 
 Image::View Image::operator()(const unsigned int count) const
 {
-	return { *this, count };
+	return {*this, count};
 }
 
 void Image::Load(const std::string& path)
@@ -136,37 +141,36 @@ std::ostream& operator<<(std::ostream& os, const Image::View& view)
 	const Image& image = view.image;
 	AssertThreeChannels(image);
 
-
 	auto width = image.GetWidth();
-    auto height = image.GetHeight();
-    auto channels = image.GetChannels();
-    auto* data = image.GetData();
+	auto height = image.GetHeight();
+	auto channels = image.GetChannels();
+	auto* data = image.GetData();
 
 	const unsigned int limit = CalculateSideLimit(view.count, width, height);
 
 	const unsigned int startX = (width - limit) / 2;
-    const unsigned int startY = (height - limit) / 2;
+	const unsigned int startY = (height - limit) / 2;
 
 	const unsigned int endX = startX + limit;
-    const unsigned int endY = startY + limit;
+	const unsigned int endY = startY + limit;
 
 	for (unsigned int y = startY; y < endY; ++y)
-    {
-        for (unsigned int x = startX; x < endX; ++x)
-        {
-            const size_t index = (static_cast<size_t>(y) * width + x) * channels;
+	{
+		for (unsigned int x = startX; x < endX; ++x)
+		{
+			const size_t index = (static_cast<size_t>(y) * width + x) * channels;
 
-            os << "pixel (" << x << "," << y << "): "
-               << static_cast<int>(data[index]) << " "
-               << static_cast<int>(data[index + 1]) << " "
-               << static_cast<int>(data[index + 2]) << '\n';
-        }
-    }
+			os << "pixel (" << x << "," << y << "): "
+			   << static_cast<int>(data[index]) << " "
+			   << static_cast<int>(data[index + 1]) << " "
+			   << static_cast<int>(data[index + 2]) << '\n';
+		}
+	}
 
 	return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const Image& image)
 {
-    return os << image(std::max(image.GetWidth(), image.GetHeight()));
+	return os << image(std::max(image.GetWidth(), image.GetHeight()));
 }
