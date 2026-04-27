@@ -1,3 +1,5 @@
+#include "histogram/Histogram.h"
+#include "histogram/HistogramBuilder.h"
 #include "image/Image.h"
 #include "src/console/ConsoleArgs.h"
 #include "src/console/ConsoleEncoding.h"
@@ -15,11 +17,13 @@ int main(const int argc, char* argv[])
 		ConsoleEncoding consoleEncoding;
 		const auto logger = std::make_shared<ConsoleLogger>(true);
 
-		const auto imagePath = ConsoleArgs::ExtractImagePath(argc, argv);
-		const auto image = Image(imagePath.string());
+		auto path = ConsoleArgs::ExtractImagePath(argc, argv);
+		const auto image = Image(path.string());
 
 		{
-			ScopedTimer("обработка файла изображения", logger);
+			const ScopedTimer timer("построение гистограммы", logger);
+			const auto histogram = HistogramBuilder::Build(image);
+			std::cout << histogram;
 		}
 	}
 	catch (const std::exception& e)
