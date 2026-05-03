@@ -6,12 +6,6 @@
 class Image
 {
 public:
-	struct View
-	{
-		const Image& image;
-		unsigned int count;
-	};
-
 	explicit Image(const std::string& path);
 	~Image();
 
@@ -20,15 +14,15 @@ public:
 	Image(Image&& other) noexcept;
 	Image& operator=(Image&& other) noexcept;
 
+	bool IsRGB() const;
+
 	unsigned int GetWidth() const;
 	unsigned int GetHeight() const;
-	size_t GetPixelCount() const;
 	unsigned int GetChannels() const;
+	size_t GetPixelCount() const;
 
 	const unsigned char* GetData() const;
 	unsigned char* GetData();
-
-	View operator()(unsigned int count) const;
 
 private:
 	void Load(const std::string& path);
@@ -40,6 +34,3 @@ private:
 	unsigned int m_channels = 0;
 	unsigned char* m_data = nullptr;
 };
-
-std::ostream& operator<<(std::ostream& os, const Image::View& view);
-std::ostream& operator<<(std::ostream& os, const Image& image);
