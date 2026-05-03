@@ -9,7 +9,7 @@ namespace
 {
 const std::set<std::string> IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"};
 
-void AssertIsArgumentsProvided(int argc)
+void AssertIsArgumentsProvided(const int argc)
 {
 	if (argc < 2)
 	{
@@ -32,6 +32,7 @@ void AssertIsImageFile(const std::filesystem::path& path)
 	{
 		ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
 	}
+
 	if (!IMAGE_EXTENSIONS.contains(ext))
 	{
 		throw std::invalid_argument("Файл не является изображением: " + path.string());
@@ -41,12 +42,13 @@ void AssertIsImageFile(const std::filesystem::path& path)
 
 namespace ConsoleArgs
 {
-std::filesystem::path ExtractImagePath(int argc, char* argv[])
+std::filesystem::path ExtractImagePath(const int argc, char* argv[])
 {
 	AssertIsArgumentsProvided(argc);
 	std::filesystem::path path(argv[1]);
 	AssertIsFileExists(path);
 	AssertIsImageFile(path);
+
 	return path;
 }
 } // namespace ConsoleArgs
