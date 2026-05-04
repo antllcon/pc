@@ -7,6 +7,7 @@ class Image
 {
 public:
 	explicit Image(const std::string& path);
+	Image(unsigned int width, unsigned int height, const std::string& hexColor);
 	~Image();
 
 	Image(const Image&) = delete;

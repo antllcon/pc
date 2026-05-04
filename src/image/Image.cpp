@@ -22,11 +22,67 @@ void AssertIsDimensionsValid(const int width, const int height, const int channe
 		throw std::runtime_error("Некорректные размеры изображения");
 	}
 }
+
+void AssertIsHexColorValid(const std::string& hexColor)
+{
+	if (hexColor.length() != 6)
+	{
+		throw std::invalid_argument("Цвет должен быть строкой из 6 символов RRGGBB");
+	}
+	for (const char c : hexColor)
+	{
+		if (!std::isxdigit(static_cast<unsigned char>(c)))
+		{
+			throw std::invalid_argument("Цвет должен содержать только шестнадцатеричные символы");
+		}
+	}
+}
+
+void AssertIsMemoryAllocated(const unsigned char* data)
+{
+	if (!data)
+	{
+		throw std::runtime_error("Не удалось выделить память под изображение");
+	}
+}
+
+unsigned char ParseHexChannel(const std::string& hexColor, const size_t offset)
+{
+	const std::string channelStr = hexColor.substr(offset, 2);
+	return static_cast<unsigned char>(std::stoul(channelStr, nullptr, 16));
+}
 } // namespace
 
 Image::Image(const std::string& path)
 {
 	Load(path);
+}
+
+Image::Image(const unsigned int width, const unsigned int height, const std::string& hexColor)
+	: m_width(width)
+	, m_height(height)
+	, m_channels(3)
+{
+	AssertIsHexColorValid(hexColor);
+	AssertIsDimensionsValid(static_cast<int>(width), static_cast<int>(height), static_cast<int>(m_channels));
+
+	const unsigned char r = ParseHexChannel(hexColor, 0);
+	const unsigned char g = ParseHexChannel(hexColor, 2);
+	const unsigned char b = ParseHexChannel(hexColor, 4);
+
+	const size_t pixelCount = GetPixelCount();
+	const size_t bytesCount = pixelCount * m_channels;
+
+	m_data = static_cast<unsigned char*>(std::malloc(bytesCount));
+	AssertIsMemoryAllocated(m_data);
+
+	for (size_t i = 0; i < pixelCount; ++i)
+	{
+		const size_t pixelIndex = i * m_channels;
+		m_data[pixelIndex] = r;
+		m_data[pixelIndex + 1] = g;
+		m_data[pixelIndex + 2] = b;
+	}
 }
 
 Image::~Image()
