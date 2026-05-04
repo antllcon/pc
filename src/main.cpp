@@ -48,6 +48,11 @@ int main(const int argc, char* argv[])
 			ScopedTimer timer("Многопоточное (Blocked)", logger);
 			auto histogram = HistogramBuilder::BuildAtomicBlocked(image, threadCount);
 		}
+
+		{
+			ScopedTimer timer("Многопоточное (Local histograms)", logger);
+			auto histogram = HistogramBuilder::BuildLocalHistograms(image, threadCount);
+		}
 	}
 	catch (const std::exception& e)
 	{
