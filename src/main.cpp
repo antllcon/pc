@@ -31,10 +31,22 @@ int main(const int argc, char* argv[])
 		auto outputPath = BuildOutputPath(imagePath);
 		auto image = Image(imagePath.string());
 
+		const unsigned int threadCount = std::thread::hardware_concurrency();
+
 		{
-			ScopedTimer timer("построение гистограммы", logger);
-			auto histogram = HistogramBuilder::Build(image);
+			ScopedTimer timer("Однопоточное построение", logger);
+			auto histogram = HistogramBuilder::Build(image, false);
 			io::Save(outputPath, histogram);
+		}
+
+		{
+			ScopedTimer timer("Многопоточное (Interleaved)", logger);
+			auto histogram = HistogramBuilder::BuildAtomicInterleaved(image, threadCount);
+		}
+
+		{
+			ScopedTimer timer("Многопоточное (Blocked)", logger);
+			auto histogram = HistogramBuilder::BuildAtomicBlocked(image, threadCount);
 		}
 	}
 	catch (const std::exception& e)
