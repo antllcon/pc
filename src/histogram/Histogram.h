@@ -3,11 +3,13 @@
 #include <array>
 #include <ostream>
 
-constexpr unsigned int COLOR_RANGE = 256;
+constexpr size_t BinCount = 256;
 
 struct Histogram
 {
-	std::array<float, COLOR_RANGE> r;
-	std::array<float, COLOR_RANGE> g;
-	std::array<float, COLOR_RANGE> b;
+	std::array<float, BinCount> r{};
+	std::array<float, BinCount> g{};
+	std::array<float, BinCount> b{};
 };
+
+std::ostream& operator<<(std::ostream& os, const Histogram& histogram);

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "histogram/Histogram.h"
 #include <filesystem>
 
 namespace io
 {
-void Save(const std::filesystem::path& path, const Histogram& histogram);
+template <typename T>
+void Save(const std::filesystem::path& path, const T& data);
 } // namespace io
