@@ -3,6 +3,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <fcntl.h>
+#include <io.h>
 #else
 #include <clocale>
 #endif
@@ -31,6 +33,8 @@ std::string SaveCurrentLocale()
 ConsoleEncoding::ConsoleEncoding()
 	: m_previousOutputCp(GetConsoleOutputCP())
 	, m_previousInputCp(GetConsoleCP())
+	, m_previousStdoutMode(_setmode(_fileno(stdout), _O_BINARY))
+	, m_previousStderrMode(_setmode(_fileno(stderr), _O_BINARY))
 {
 	AssertIsEncodingSet(SetConsoleOutputCP(CP_UTF8) != 0);
 	AssertIsEncodingSet(SetConsoleCP(CP_UTF8) != 0);
@@ -40,6 +44,8 @@ ConsoleEncoding::~ConsoleEncoding() noexcept
 {
 	SetConsoleOutputCP(m_previousOutputCp);
 	SetConsoleCP(m_previousInputCp);
+	_setmode(_fileno(stdout), m_previousStdoutMode);
+	_setmode(_fileno(stderr), m_previousStderrMode);
 }
 
 #else

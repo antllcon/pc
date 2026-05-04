@@ -16,15 +16,15 @@ namespace
 {
 std::filesystem::path BuildOutputPath(const std::filesystem::path& imagePath)
 {
-	return imagePath.parent_path() / (imagePath.stem().string() + "-stats.txt");
+	return imagePath.parent_path() / (imagePath.stem().string() + "-stats.csv");
 }
 } // namespace
 
 int main(const int argc, char* argv[])
 {
+	ConsoleEncoding consoleEncoding;
 	try
 	{
-		ConsoleEncoding consoleEncoding;
 		auto logger = std::make_shared<ConsoleLogger>(true);
 
 		auto imagePath = ConsoleArgs::ExtractImagePath(argc, argv);
@@ -33,8 +33,8 @@ int main(const int argc, char* argv[])
 
 		{
 			ScopedTimer timer("построение гистограммы", logger);
-			auto histogram = HistogramBuilder::BuildLocalHistograms(image, 1);
-			io::SaveToFile(outputPath, histogram);
+			auto histogram = HistogramBuilder::Build(image);
+			io::Save(outputPath, histogram);
 		}
 	}
 	catch (const std::exception& e)
