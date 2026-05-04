@@ -1,183 +1,129 @@
 #include "src/histogram/HistogramBuilder.h"
 #include "src/image/Image.h"
 
+#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <numeric>
-#include <vector>
+#include <stdexcept>
 
 using namespace testing;
 
 namespace
 {
-constexpr unsigned int TEST_THREAD_COUNT = 4;
-constexpr float SUM_EPSILON = 1e-5f;
-constexpr float MATCH_EPSILON = 1e-6f;
-
-float SumChannel(const std::array<float, 256>& channel)
+void AssertIsFileOpened(const std::ofstream& file)
 {
-	return std::accumulate(channel.begin(), channel.end(), 0.0f);
-}
-
-bool ChannelsMatch(const std::array<float, 256>& a, const std::array<float, 256>& b, float eps)
-{
-	for (int i = 0; i < 256; ++i)
+	if (!file.is_open())
 	{
-		if (std::abs(a[i] - b[i]) > eps)
-		{
-			return false;
-		}
+		throw std::runtime_error("Не удалось создать тестовый файл изображения");
 	}
-	return true;
 }
 
-void WriteUint16LE(std::vector<unsigned char>& buf, int offset, uint16_t val)
+void DeleteTempPath(std::filesystem::path* path)
 {
-	buf[offset] = val & 0xFF;
-	buf[offset + 1] = (val >> 8) & 0xFF;
-}
-
-void WriteUint32LE(std::vector<unsigned char>& buf, int offset, uint32_t val)
-{
-	buf[offset] = val & 0xFF;
-	buf[offset + 1] = (val >> 8) & 0xFF;
-	buf[offset + 2] = (val >> 16) & 0xFF;
-	buf[offset + 3] = (val >> 24) & 0xFF;
-}
-
-void WriteSolidBMP(
-	const std::string& path,
-	int width,
-	int height,
-	unsigned char r,
-	unsigned char g,
-	unsigned char b)
-{
-	const int rowStride = ((width * 3 + 3) / 4) * 4;
-	const int pixelDataSize = rowStride * height;
-	const int fileSize = 54 + pixelDataSize;
-
-	std::vector<unsigned char> buf(fileSize, 0);
-
-	// File header
-	buf[0] = 'B';
-	buf[1] = 'M';
-	WriteUint32LE(buf, 2, static_cast<uint32_t>(fileSize));
-	WriteUint32LE(buf, 10, 54);
-
-	// DIB header (BITMAPINFOHEADER)
-	WriteUint32LE(buf, 14, 40);
-	WriteUint32LE(buf, 18, static_cast<uint32_t>(width));
-	WriteUint32LE(buf, 22, static_cast<uint32_t>(height));
-	WriteUint16LE(buf, 26, 1);
-	WriteUint16LE(buf, 28, 24);
-
-	// Pixel data: BMP stores BGR, rows bottom-to-top
-	for (int row = 0; row < height; ++row)
+	if (path && std::filesystem::exists(*path))
 	{
-		int rowOffset = 54 + row * rowStride;
-		for (int col = 0; col < width; ++col)
-		{
-			buf[rowOffset + col * 3 + 0] = b;
-			buf[rowOffset + col * 3 + 1] = g;
-			buf[rowOffset + col * 3 + 2] = r;
-		}
+		std::filesystem::remove(*path);
 	}
+	delete path;
+}
 
-	std::ofstream file(path, std::ios::binary);
-	file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+using TempFileGuard = std::unique_ptr<std::filesystem::path, decltype(&DeleteTempPath)>;
+
+TempFileGuard CreateTestImage()
+{
+	auto path = new std::filesystem::path(std::filesystem::temp_directory_path() / "test_image.ppm");
+	std::ofstream file(*path, std::ios::binary);
+
+	AssertIsFileOpened(file);
+
+	file << "P6\n2 2\n255\n";
+	const unsigned char pixels[] = {
+		255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255};
+	file.write(reinterpret_cast<const char*>(pixels), sizeof(pixels));
+
+	return {path, DeleteTempPath};
+}
+
+void AssertIsHistogramsEqual(const Histogram& left, const Histogram& right)
+{
+	for (size_t i = 0; i < BinCount; ++i)
+	{
+		EXPECT_FLOAT_EQ(left.r[i], right.r[i]);
+		EXPECT_FLOAT_EQ(left.g[i], right.g[i]);
+		EXPECT_FLOAT_EQ(left.b[i], right.b[i]);
+	}
 }
 } // namespace
 
-class HistogramTest : public Test
+// Проверка корректности однопоточного построения ненормализованной гистограммы
+TEST(HistogramBuilderTest, SingleThreadCorrectness)
 {
-public:
-	static void SetUpTestSuite()
-	{
-		s_image = std::make_unique<Image>("res/images/mojave.jpg");
-		s_reference = std::make_unique<Histogram>(HistogramBuilder::Build(*s_image));
+	const auto pathGuard = CreateTestImage();
+	Image image(pathGuard->string());
 
-		WriteSolidBMP("test_solid.bmp", 64, 64, 128, 0, 255);
-		s_solidImage = std::make_unique<Image>("test_solid.bmp");
-	}
+	const Histogram histogram = HistogramBuilder::Build(image, false);
 
-	static void TearDownTestSuite()
-	{
-		s_solidImage.reset();
-		s_reference.reset();
-		s_image.reset();
-		std::remove("test_solid.bmp");
-	}
-
-protected:
-	static std::unique_ptr<Image> s_image;
-	static std::unique_ptr<Histogram> s_reference;
-	static std::unique_ptr<Image> s_solidImage;
-};
-
-std::unique_ptr<Image> HistogramTest::s_image;
-std::unique_ptr<Histogram> HistogramTest::s_reference;
-std::unique_ptr<Image> HistogramTest::s_solidImage;
-
-// Проверка суммы каналов однопоточной реализации
-TEST_F(HistogramTest, SingleThreadSumIsOne)
-{
-	EXPECT_NEAR(SumChannel(s_reference->r), 1.0f, SUM_EPSILON);
-	EXPECT_NEAR(SumChannel(s_reference->g), 1.0f, SUM_EPSILON);
-	EXPECT_NEAR(SumChannel(s_reference->b), 1.0f, SUM_EPSILON);
+	EXPECT_FLOAT_EQ(histogram.r[255], 2.0f);
+	EXPECT_FLOAT_EQ(histogram.r[0], 2.0f);
+	EXPECT_FLOAT_EQ(histogram.g[255], 2.0f);
+	EXPECT_FLOAT_EQ(histogram.g[0], 2.0f);
+	EXPECT_FLOAT_EQ(histogram.b[255], 2.0f);
+	EXPECT_FLOAT_EQ(histogram.b[0], 2.0f);
 }
 
-// Проверка корректности на изображении с одним известным цветом (128, 0, 255)
-TEST_F(HistogramTest, SingleThreadKnownColor)
+// Проверка нормализации гистограммы
+TEST(HistogramBuilderTest, NormalizationCorrectness)
 {
-	const auto hist = HistogramBuilder::Build(*s_solidImage);
+	const auto pathGuard = CreateTestImage();
+	Image image(pathGuard->string());
 
-	EXPECT_NEAR(hist.r[128], 1.0f, SUM_EPSILON);
-	EXPECT_NEAR(hist.g[0], 1.0f, SUM_EPSILON);
-	EXPECT_NEAR(hist.b[255], 1.0f, SUM_EPSILON);
+	const Histogram histogram = HistogramBuilder::Build(image, true);
+
+	const float sumR = std::accumulate(histogram.r.begin(), histogram.r.end(), 0.0f);
+	const float sumG = std::accumulate(histogram.g.begin(), histogram.g.end(), 0.0f);
+	const float sumB = std::accumulate(histogram.b.begin(), histogram.b.end(), 0.0f);
+
+	EXPECT_FLOAT_EQ(sumR, 1.0f);
+	EXPECT_FLOAT_EQ(sumG, 1.0f);
+	EXPECT_FLOAT_EQ(sumB, 1.0f);
 }
 
-// Проверка совпадения варианта 2a с однопоточным эталоном
-TEST_F(HistogramTest, AtomicInterleavedMatchesSingle)
+// Проверка идентичности результатов Interleaved и однопоточного алгоритмов
+TEST(HistogramBuilderTest, InterleavedEqualsSingle)
 {
-	const auto hist = HistogramBuilder::BuildAtomicInterleaved(*s_image, TEST_THREAD_COUNT);
+	const auto pathGuard = CreateTestImage();
+	Image image(pathGuard->string());
+	const unsigned int threadCount = 2;
 
-	EXPECT_TRUE(ChannelsMatch(hist.r, s_reference->r, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist.g, s_reference->g, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist.b, s_reference->b, MATCH_EPSILON));
+	const Histogram expected = HistogramBuilder::Build(image, false);
+	const Histogram actual = HistogramBuilder::BuildAtomicInterleaved(image, threadCount);
+
+	AssertIsHistogramsEqual(expected, actual);
 }
 
-// Проверка совпадения варианта 2b с однопоточным эталоном
-TEST_F(HistogramTest, AtomicBlockedMatchesSingle)
+// Проверка идентичности результатов Blocked и однопоточного алгоритмов
+TEST(HistogramBuilderTest, BlockedEqualsSingle)
 {
-	const auto hist = HistogramBuilder::BuildAtomicBlocked(*s_image, TEST_THREAD_COUNT);
+	const auto pathGuard = CreateTestImage();
+	Image image(pathGuard->string());
+	const unsigned int threadCount = 2;
 
-	EXPECT_TRUE(ChannelsMatch(hist.r, s_reference->r, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist.g, s_reference->g, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist.b, s_reference->b, MATCH_EPSILON));
+	const Histogram expected = HistogramBuilder::Build(image, false);
+	const Histogram actual = HistogramBuilder::BuildAtomicBlocked(image, threadCount);
+
+	AssertIsHistogramsEqual(expected, actual);
 }
 
-// Проверка совпадения варианта 3 с однопоточным эталоном
-TEST_F(HistogramTest, LocalHistogramsMatchSingle)
+// Проверка идентичности результатов Local и однопоточного алгоритмов
+TEST(HistogramBuilderTest, LocalEqualsSingle)
 {
-	const auto hist = HistogramBuilder::BuildLocalHistograms(*s_image, TEST_THREAD_COUNT);
+	const auto pathGuard = CreateTestImage();
+	Image image(pathGuard->string());
+	const unsigned int threadCount = 2;
 
-	EXPECT_TRUE(ChannelsMatch(hist.r, s_reference->r, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist.g, s_reference->g, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist.b, s_reference->b, MATCH_EPSILON));
-}
+	const Histogram expected = HistogramBuilder::Build(image, false);
+	const Histogram actual = HistogramBuilder::BuildLocalHistograms(image, threadCount);
 
-// Проверка взаимной согласованности всех параллельных вариантов
-TEST_F(HistogramTest, AllVariantsConsistent)
-{
-	const auto hist2a = HistogramBuilder::BuildAtomicInterleaved(*s_image, TEST_THREAD_COUNT);
-	const auto hist2b = HistogramBuilder::BuildAtomicBlocked(*s_image, TEST_THREAD_COUNT);
-	const auto hist3 = HistogramBuilder::BuildLocalHistograms(*s_image, TEST_THREAD_COUNT);
-
-	EXPECT_TRUE(ChannelsMatch(hist2a.r, hist2b.r, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist2a.r, hist3.r, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist2a.g, hist2b.g, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist2a.g, hist3.g, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist2a.b, hist2b.b, MATCH_EPSILON));
-	EXPECT_TRUE(ChannelsMatch(hist2a.b, hist3.b, MATCH_EPSILON));
+	AssertIsHistogramsEqual(expected, actual);
 }
