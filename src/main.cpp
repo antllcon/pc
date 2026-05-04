@@ -28,12 +28,11 @@ int main(const int argc, char* argv[])
 		auto logger = std::make_shared<ConsoleLogger>(true);
 
 		auto imagePath = ConsoleArgs::ExtractImagePath(argc, argv);
+		auto outputPath = BuildOutputPath(imagePath);
 		auto image = Image(imagePath.string());
 
-		auto outputPath = BuildOutputPath(imagePath);
-
 		{
-			const ScopedTimer timer("построение гистограммы", logger);
+			ScopedTimer timer("построение гистограммы", logger);
 			auto histogram = HistogramBuilder::BuildLocalHistograms(image, 1);
 			io::SaveToFile(outputPath, histogram);
 		}
