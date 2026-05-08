@@ -5,20 +5,25 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# ВАЖНО: Для работы boost::context (от которого зависит cobalt)
+# на Windows в MSVC обязательно нужен ассемблер (MASM).
+if (WIN32 AND MSVC)
+    enable_language(ASM_MASM)
+endif()
+
 include(FetchContent)
 
+set(BOOST_ENABLE_TESTING OFF CACHE BOOL "Disable Boost tests" FORCE)
+set(BOOST_INCLUDE_LIBRARIES cobalt asio CACHE STRING "Build only cobalt and its dependencies" FORCE)
+
 FetchContent_Declare(
-        asio
-        GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-        GIT_TAG        asio-1-30-2
+        boost
+        URL https://github.com/boostorg/boost/releases/download/boost-1.85.0/boost-1.85.0-cmake.tar.xz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
-FetchContent_MakeAvailable(asio)
+FetchContent_MakeAvailable(boost)
 
-add_library(asio_lib INTERFACE)
-target_include_directories(asio_lib SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
-target_compile_definitions(asio_lib INTERFACE ASIO_STANDALONE _WIN32_WINNT=0x0601)
-
+# 2. Настраиваем исходники
 file(GLOB_RECURSE SRC_FILES "src/*.cpp")
 file(GLOB_RECURSE HEADER_FILES "src/*.h")
 list(REMOVE_ITEM SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
@@ -29,18 +34,27 @@ else ()
     add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 endif ()
 
+# 3. Основная библиотека
 add_library(core_lib STATIC ${SRC_FILES} ${HEADER_FILES})
 target_include_directories(core_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(core_lib PUBLIC asio_lib)
+
+# Подключаем Boost (вместо старого asio_lib).
+# Cobalt сам подтянет необходимые ему boost::context и boost::system.
+target_link_libraries(core_lib PUBLIC Boost::cobalt Boost::asio)
 
 if (WIN32)
-    target_link_libraries(core_lib PUBLIC ws2_32 winmm ole32)
+    # Добавил bcrypt, так как современные версии Boost часто его требуют
+    target_link_libraries(core_lib PUBLIC ws2_32 winmm ole32 bcrypt)
+    # Рекомендую 0x0A00 (Windows 10/11) вместо 0x0601 (Windows 7)
+    target_compile_definitions(core_lib PUBLIC _WIN32_WINNT=0x0A00)
 endif ()
 
+# 4. Исполняемый файл
 add_executable(start src/main.cpp)
 target_link_libraries(start PRIVATE core_lib)
 set_target_properties(start PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/res")
 
+# 5. Тесты
 option(BUILD_TESTING "Build the tests" ON)
 
 if (BUILD_TESTING)
@@ -64,6 +78,7 @@ if (BUILD_TESTING)
     endif ()
 endif ()
 
+# 6. Бенчмарки
 option(BUILD_BENCHMARKS "Build the benchmarks" ON)
 
 if (BUILD_BENCHMARKS)
