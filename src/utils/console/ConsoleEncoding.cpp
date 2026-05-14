@@ -2,20 +2,20 @@
 #include <stdexcept>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <fcntl.h>
 #include <io.h>
+#include <windows.h>
 #else
 #include <clocale>
 #endif
 
 namespace
 {
-void AssertIsEncodingSet(bool success)
+void AssertIsEncodingSet(const bool success)
 {
 	if (!success)
 	{
-		throw std::runtime_error("Couldn't configure the encoding of the console");
+		std::terminate();
 	}
 }
 
@@ -26,7 +26,7 @@ std::string SaveCurrentLocale()
 	return locale ? locale : "";
 }
 #endif
-}
+} // namespace
 
 #ifdef _WIN32
 
@@ -62,5 +62,3 @@ ConsoleEncoding::~ConsoleEncoding() noexcept
 }
 
 #endif
-
-
